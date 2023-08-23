@@ -54,11 +54,11 @@ const checkUniqueName = obj => {
     return persons.filter(person => {return person.name===obj.name})
 }
 
-app.get('/api/persons', (req, res) => {
+app.get('/persons', (req, res) => {
     res.json(persons)
 })
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/persons/:id', (req, res) => {
     const id = Number(req.params.id)
     const person = persons.find(person => person.id === id)
     if(person){
@@ -75,7 +75,7 @@ app.get('/info', (req, res) => {
     <p>${time}</p>`)
 })
 
-app.delete('/api/deletePerson/:id', (req, res) =>{
+app.delete('/deletePerson/:id', (req, res) =>{
     const id = Number(req.params.id)
     const len = persons.length
     persons = persons.filter(person => person.id !== id)
@@ -87,7 +87,7 @@ app.delete('/api/deletePerson/:id', (req, res) =>{
     }
 })
 
-app.post('/api/post', (req, res) => {
+app.post('/post', (req, res) => {
     const person = req.body
     if(checkObj(person)){
         return res.status(400).json({error: 'missing values'})
