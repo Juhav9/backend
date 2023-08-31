@@ -5,11 +5,12 @@ const morgan = require('morgan')
 const cors = require('cors')
 
 const Person = require('./models/person')
+const { default: mongoose } = require('mongoose')
 
 morgan.token('post-content', (req, res) =>{
-    if(req.method==="POST"){
-        return JSON.stringify(req.body)
-    }
+  if(req.method==='POST'){
+    return JSON.stringify(req.body)
+  }
 })
 
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :post-content'))
@@ -17,70 +18,70 @@ app.use(express.json())
 app.use(cors())
 app.use(express.static('build'))
 
-const checkObj = obj => {
-    if(Object.keys(obj).length<2){
-        return true
-    }
-    for(value in obj){
-        if(obj[value]===''){
-            return true
-        }
-    }
-}
-const checkUniqueName = obj => {
-    return persons.filter(person => {return person.name===obj.name})
-}
-
 app.get('/api/persons', (req, res) => {
-    Person
-        .find({})
-        .then(result => { res.json(result) })
+  Person
+    .find({})
+    .then(result => { res.json(result).end()})
 })
 
-app.get('/api/persons/:id', (req, res) => {
-    const id = Number(req.params.id)
-    const person = persons.find(person => person.id === id)
-    if(person){
-        res.json(person)
-    }
-    else{
-        res.status(404).end()
-    }
+app.get('/api/persons/:id', (req, res, next) => {
+  Person.findById(req.params.id).then(person => {
+    res.json(person).end()
+  })
+    .catch(error => next(error))
 })
 
 app.get('/info', (req, res) => {
-    const time = Date()
-    res.send(`<p>Phonebook has info for ${persons.length} people </p> 
-    <p>${time}</p>`)
+  const time = Date()
+  Person.find({}).then(result=> 
+    res.send(`<p>Phonebook has info for ${result.length} people </p> 
+        <p>${time}</p>`))
+    
 })
 
-app.delete('/api/persons/:id', (req, res) =>{
-    const id = Number(req.params.id)
-    const len = persons.length
-    persons = persons.filter(person => person.id !== id)
-    if(len-1===persons.length){
-        res.status(204).end()
-    }
-    else{
-        res.status(404).end()
-    }
+app.delete('/api/persons/:id', (req, res, next) =>{
+  console.log('Deleting id: ', req.params.id)
+  Person.findByIdAndDelete(req.params.id)
+    .then(result => {
+      res.status(204).end()
+    }).catch(error => next(error))
+
+})
+app.post('/api/persons', (req, res, next) => {
+  const person = req.body
+  const newPerson = new Person({
+    name: person.name,
+    number: person.number
+  })
+  newPerson.save().then(result => {
+    console.log(`${result.name} added to phonebook`)
+    res.json(result).end()
+  }).catch(error => next(error))
 })
 
-app.post('/api/persons', (req, res) => {
-    const person = req.body
-    if(checkObj(person)){
-        return res.status(400).json({error: 'missing values'})
-    }
-    if(checkUniqueName(person).length>0){
-        return res.status(400).json({error: 'name must be unique'})
-    }
-    const id = Math.floor(Math.random()*7000)
-    const newPerson = {...person, id}
-    persons = [...persons, newPerson]
-    res.json(newPerson)
+app.put('/api/persons/:id', (req, res) => {
+  const person = {
+    name: req.body.name,
+    number: req.body.number
+  }
+  Person.findByIdAndUpdate(req.params.id, person, {new: true
+  })
+    .then(result => res.json(result))
+    .catch(error => next(error))
 })
+
+const errorHandler = (error, req, res, next) => {
+  console.log('Error!')
+  if(error.name==='CastError'){
+    res.status(400).send({error: 'malformatted id'})
+  }
+  if(error.name==='ValidationError'){
+    res.status(400).json(error)
+  }
+}
+app.use(errorHandler)
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () =>{
-    console.log(`Server running on port ${PORT}`)
+  console.log(`Server running on port ${PORT}`)
 })
